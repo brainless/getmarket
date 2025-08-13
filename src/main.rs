@@ -2,6 +2,9 @@ use clap::{Parser, Subcommand};
 use chrono::{Local, NaiveDate};
 use anyhow::Result;
 
+mod database;
+use database::Database;
+
 #[derive(Parser)]
 #[command(name = "market-data")]
 #[command(about = "A CLI tool for ingesting stock market data")]
@@ -97,7 +100,18 @@ async fn handle_status() -> Result<()> {
 
 async fn handle_init_db(db_path: String) -> Result<()> {
     println!("Initializing database at: {}", db_path);
-    // TODO: Implement database initialization
-    println!("Database initialization not yet implemented");
+    
+    // Create the database URL
+    let database_url = format!("sqlite://{}", db_path);
+    
+    // Connect to the database (will create file if it doesn't exist)
+    let db = Database::new(&database_url).await?;
+    
+    // Initialize the schema
+    db.initialize().await?;
+    
+    println!("✅ Database initialized successfully at: {}", db_path);
+    println!("You can now use the 'ingest' command to start downloading data.");
+    
     Ok(())
 }
