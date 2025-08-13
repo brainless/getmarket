@@ -100,6 +100,87 @@ impl Database {
 
         Ok(())
     }
+
+    pub async fn upsert_company(&self, symbol: &str, isin: &str, series: &str) -> Result<i64> {
+        // Try to get existing company
+        let existing = sqlx::query(
+            "SELECT id FROM companies WHERE symbol = ?"
+        )
+        .bind(symbol)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if let Some(row) = existing {
+            let id: i64 = row.get("id");
+            // Update the existing record
+            sqlx::query(
+                "UPDATE companies SET isin = ?, series = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+            )
+            .bind(isin)
+            .bind(series)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+            
+            Ok(id)
+        } else {
+            // Insert new company
+            let result = sqlx::query(
+                "INSERT INTO companies (symbol, isin, series) VALUES (?, ?, ?)"
+            )
+            .bind(symbol)
+            .bind(isin)
+            .bind(series)
+            .execute(&self.pool)
+            .await?;
+            
+            Ok(result.last_insert_rowid())
+        }
+    }
+
+    pub async fn upsert_daily_price(&self, company_id: i64, price_data: &crate::nse::StockRecord) -> Result<()> {
+        sqlx::query(
+            r#"
+            INSERT OR REPLACE INTO daily_prices (
+                company_id, trade_date, open_price, high_price, low_price, 
+                close_price, last_price, prev_close, total_traded_qty, 
+                total_traded_value, total_trades
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#
+        )
+        .bind(company_id)
+        .bind(price_data.timestamp)
+        .bind(price_data.open)
+        .bind(price_data.high)
+        .bind(price_data.low)
+        .bind(price_data.close)
+        .bind(price_data.last)
+        .bind(price_data.prevclose)
+        .bind(price_data.tottrdqty)
+        .bind(price_data.tottrdval)
+        .bind(price_data.totaltrades)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn store_stock_records(&self, records: &[crate::nse::StockRecord]) -> Result<usize> {
+        let mut stored_count = 0;
+        
+        for record in records {
+            // First ensure the company exists
+            let company_id = self.upsert_company(&record.symbol, &record.isin, &record.series).await?;
+            
+            // Then store the price data
+            self.upsert_daily_price(company_id, record).await?;
+            stored_count += 1;
+        }
+        
+        info!("Stored {} stock records in database", stored_count);
+        Ok(stored_count)
+    }
 }
 
 #[derive(Debug)]
