@@ -1,5 +1,6 @@
 pub mod database;
 pub mod nse;
+pub mod api;
 
 #[cfg(test)]
 mod tests {

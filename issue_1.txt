@@ -1,0 +1,124 @@
+title:	Implement Rust CLI for NSE India Stock Data Ingestion - MVP
+state:	OPEN
+author:	brainless
+labels:	
+comments:	0
+assignees:	brainless
+projects:	
+milestone:	
+number:	1
+--
+## Overview
+
+Create a Rust CLI application to ingest daily stock market data from NSE India (National Stock Exchange of India) and store it in a SQLite database. This is the MVP (Minimum Viable Product) implementation for our stock market data tracking system.
+
+## Why NSE India as the First Source?
+
+NSE India was chosen as the easiest source to implement because:
+- ✅ **No authentication required** - Public access to daily bhavcopy files
+- ✅ **Structured CSV format** - Well-defined data structure
+- ✅ **Reliable official source** - Direct from the exchange
+- ✅ **Daily updates** - End-of-day data available T+1
+
+## Requirements
+
+### Core Functionality
+- [ ] Download daily bhavcopy CSV files from NSE India
+- [ ] Parse CSV data with proper error handling
+- [ ] Store data in SQLite database using the provided schema
+- [ ] Handle duplicate data gracefully (upsert operations)
+- [ ] Logging of ingestion process and errors
+
+### CLI Interface
+The CLI should support the following commands:
+
+```bash
+# Download and ingest today's data
+market-data ingest --source nse --date today
+
+# Download specific date
+market-data ingest --source nse --date 2024-01-15
+
+# Download date range
+market-data ingest --source nse --from 2024-01-01 --to 2024-01-31
+
+# Show ingestion status/logs
+market-data status
+
+# Initialize database
+market-data init-db
+```
+
+### Data Sources
+- **Primary URL**: https://www.nseindia.com/all-reports
+- **Historical Archives**: https://www.nseindia.com/resources/historical-reports-capital-market-daily-monthly-archives
+- **Data Format**: CSV (bhavcopy files)
+- **Typical Columns**: SYMBOL, SERIES, OPEN, HIGH, LOW, CLOSE, LAST, PREVCLOSE, TOTTRDQTY, TOTTRDVAL, TIMESTAMP, TOTALTRADES, ISIN
+
+### Database Schema
+The SQLite database schema is provided in `database_schema.sql` with three main tables:
+- `companies` - Master table for stock symbols and metadata
+- `daily_prices` - Daily OHLC and volume data
+- `ingestion_log` - Track data ingestion process and status
+
+### Technical Requirements
+
+#### Rust Dependencies (Suggested)
+- `clap` - Command line argument parsing
+- `tokio` + `reqwest` - Async HTTP client for downloads
+- `csv` - CSV parsing
+- `sqlx` with SQLite feature - Database operations
+- `chrono` - Date/time handling
+- `serde` - Serialization/deserialization
+- `anyhow` or `thiserror` - Error handling
+- `tracing` or `log` - Logging
+
+#### Error Handling
+- Network failures during download
+- Invalid/malformed CSV data
+- Database connection/transaction errors
+- File system operations
+- Date parsing and validation
+
+#### Configuration
+- Database file path (default: `./market_data.db`)
+- Download directory for temporary files
+- Retry logic for failed downloads
+- Configurable timeout values
+
+## Acceptance Criteria
+
+- [ ] CLI can successfully download NSE bhavcopy files
+- [ ] CSV data is correctly parsed and validated
+- [ ] Data is stored in SQLite database following the schema
+- [ ] Duplicate records are handled properly (no crashes)
+- [ ] Comprehensive error handling and user-friendly error messages
+- [ ] Logging of all operations with different log levels
+- [ ] Unit tests for core parsing and database logic
+- [ ] Integration test with sample CSV data
+- [ ] Documentation with usage examples
+
+## Out of Scope for MVP
+- Real-time data ingestion
+- Multiple data sources (will be added incrementally)
+- Web interface or API
+- Advanced analytics or calculations
+- Data validation beyond basic format checks
+- Backup/restore functionality
+
+## Technical Notes
+- Use async/await for HTTP operations to handle multiple downloads efficiently
+- Implement proper transaction handling for database operations
+- Consider using a connection pool even for SQLite for better performance
+- Add progress indicators for long-running operations
+- Structure code to easily add more data sources later
+
+## Success Metrics
+- Successfully ingest at least 30 days of historical data
+- Handle network failures gracefully with retry logic
+- Process a full day's data (typically 1000+ stocks) in under 30 seconds
+- Database operations should be atomic and consistent
+
+## Related Files
+- `database_schema.sql` - SQLite schema definition
+- `project/OVERVIEW.md` - Complete project overview with all data sources

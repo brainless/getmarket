@@ -5,6 +5,7 @@ use sqlx::Row;
 
 mod database;
 mod nse;
+mod api;
 
 use database::{Database, IngestionLogInsert};
 use nse::{NseClient, parse_csv_data};
@@ -47,6 +48,20 @@ enum Commands {
         #[arg(long, default_value = "./market_data.db")]
         db_path: String,
     },
+    /// Start the REST API server
+    Serve {
+        /// Database file path
+        #[arg(long, default_value = "./market_data.db")]
+        db_path: String,
+        
+        /// Server host address
+        #[arg(long, default_value = "127.0.0.1")]
+        host: String,
+        
+        /// Server port
+        #[arg(long, default_value = "8080")]
+        port: u16,
+    },
 }
 
 #[tokio::main]
@@ -65,6 +80,9 @@ async fn main() -> Result<()> {
         },
         Commands::InitDb { db_path } => {
             handle_init_db(db_path).await?
+        },
+        Commands::Serve { db_path, host, port } => {
+            handle_serve(db_path, host, port).await?
         },
     }
     
@@ -255,6 +273,22 @@ async fn handle_init_db(db_path: String) -> Result<()> {
     
     println!("✅ Database initialized successfully at: {}", db_path);
     println!("You can now use the 'ingest' command to start downloading data.");
+    
+    Ok(())
+}
+
+async fn handle_serve(db_path: String, host: String, port: u16) -> Result<()> {
+    println!("Starting API server with database: {}", db_path);
+    
+    // Create the database URL
+    let database_url = format!("sqlite://{}", db_path);
+    
+    // Connect to the database
+    let db = Database::new(&database_url).await?;
+    
+    // Start the server
+    api::start_server(host, port, db).await
+        .map_err(|e| anyhow::anyhow!("Server error: {}", e))?;
     
     Ok(())
 }

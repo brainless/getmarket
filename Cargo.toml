@@ -11,6 +11,14 @@ csv = "1.2"
 sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite", "chrono", "migrate"] }
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 anyhow = "1.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+flate2 = "1.0"
+# REST API dependencies
+actix-web = "4.4"
+actix-cors = "0.7"
+actix-web-validator = "5.0"
+validator = { version = "0.17", features = ["derive"] }
+futures = "0.3"
